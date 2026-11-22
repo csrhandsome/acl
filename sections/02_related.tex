@@ -1,18 +1,20 @@
 \section{Related Work}
 \label{sec:related}
 
-\subsection{Tactile Representation Learning and Cross-Embodiment Retargeting}
+\subsection{Tactile Representation Learning}
 Self-supervised representation learning has emerged as a promising paradigm for tactile sensing, adapting masked autoencoding, contrastive learning, and joint-embedding predictive architectures (JEPA) \citep{assran2023self,bardes2024revisiting} to visuo-tactile images and taxel arrays.
-\citet{higuera2024sparsh} pre-train visuo-tactile encoders via MAE, DINO, and JEPA objectives on RGB elastomer images, while \citet{feng2025anytouch} learn static-dynamic representations across multiple visuo-tactile sensors using sensor-specific tokens.
-However, these approaches predominantly operate in sensor-native image or taxel spaces, making cross-embodiment transfer between articulated dexterous hands and parallel grippers difficult.
+\citet{higuera2024sparsh} pre-train visuo-tactile encoders via MAE, DINO, and JEPA objectives on RGB elastomer images, while \citet{yang2024binding} align touch with vision and language across multimodal corpora.
+To handle sensor heterogeneity across diverse visuo-tactile hardware, \citet{zhao2024transferable} introduce sensor-specific encoders and shared transformer trunks, and \citet{feng2025anytouch} learn static-dynamic representations across multiple visuo-tactile sensors using sensor-specific tokens.
+However, these approaches operate in sensor-native image or taxel spaces and focus predominantly on parallel-gripper visuo-tactile pads, leaving the geometric and kinematic gap between articulated dexterous hands and two-finger grippers unbridged.
 On the geometric side, parametric human hand models such as MANO \citep{romero2017embodied} provide a canonical surface parameterization widely used for kinematic hand retargeting.
-Unlike prior kinematic-only retargeting pipelines, our dual-route framework maps \emph{both} articulated hand kinematics with fingertip deformation arrays and static parallel-gripper tactile pads onto the same canonical MANO UV atlas under fixed, non-adaptive intensity scaling.
+Unlike kinematic-only retargeting pipelines, our dual-route framework maps \emph{both} articulated hand kinematics with fingertip deformation arrays and static parallel-gripper tactile pads onto the same canonical MANO UV atlas under fixed, non-adaptive intensity scaling.
 
-\subsection{Tactile and Embodied Manipulation Benchmarks}
-Existing tactile evaluation suites largely focus on single-sensor classification, material recognition, or end-to-end policy success in simulation.
-While informative for specific hardware, such benchmarks conflate encoder representation quality with downstream policy capacity, decoder architecture, or sensor-specific visual artifacts.
-Table~\ref{tab:benchmark_comparison} contrasts \bench{} with representative tactile representation and manipulation benchmarks across embodiment coverage, canonicalization, validity masking, and evaluation protocol.
-\bench{} is uniquely designed to isolate \emph{frozen} encoder latent quality across embodiments via unified small-decoder reconstruction (L0), decoupled proxy/physical/temporal probing (L1), and controlled cross-domain generalization (L2).
+\subsection{Tactile Benchmarks}
+Existing tactile evaluation suites largely focus on single-sensor classification, material and property reasoning \citep{yu2024octopi}, or end-to-end policy success in simulation.
+Recent multi-source benchmarks such as TouchThinker \citep{lyu2026touchthinker} curate large-scale visuo-tactile datasets across multiple gripper sensors for open-world commonsense reasoning, while representation suites such as Sparsh \citep{higuera2024sparsh} and AnyTouch \citep{feng2025anytouch} probe frozen features primarily on visuo-tactile gripper tasks.
+However, existing benchmarks either remain confined to gripper-only sensor spaces, omit explicit observation validity masks for partial coverage, or evaluate encoders via native decoders and downstream fine-tuning that conflate latent quality with decoder or policy capacity.
+Table~\ref{tab:benchmark_comparison} contrasts \bench{} with representative tactile evaluation suites across embodiment coverage, canonicalization, validity masking, and evaluation protocol.
+\bench{} is specifically designed to isolate \emph{frozen} encoder quality across embodiments via unified low-capacity reconstruction (L0), decoupled proxy, physical, and temporal probing (L1), and controlled cross-domain transfer (L2).
 
 \begin{table*}[t]
 \centering
@@ -25,11 +27,12 @@ Table~\ref{tab:benchmark_comparison} contrasts \bench{} with representative tact
 \midrule
 Sparsh Suite \citep{higuera2024sparsh} & -- & Gripper only & -- & \checkmark & -- & Partial & -- \\
 AnyTouch Eval \citep{feng2025anytouch} & -- & Gripper only & -- & \checkmark & -- & \checkmark & -- \\
-Sensor-Native Recon. Baselines & -- & Single & -- & -- & -- & -- & -- \\
+TouchThinker-Bench \citep{lyu2026touchthinker} & -- & Gripper only & -- & -- & -- & \checkmark & -- \\
+Sensor-Native Recon.\ Baselines & -- & Single & -- & -- & -- & -- & -- \\
 \midrule
 \textbf{\bench{} (Ours)} & \textbf{MANO UV} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} & \textbf{\checkmark} \\
 \bottomrule
 \end{tabular}
-\caption{Comparison of \bench{} with existing tactile representation evaluation protocols. \bench{} unifies articulated dexterous hands and parallel grippers onto a canonical MANO UV atlas with explicit observation validity masks and standardized frozen-encoder probing.}
+\caption{Comparison of \bench{} with existing tactile representation evaluation suites. \bench{} unifies articulated dexterous hands and parallel grippers onto a canonical MANO UV atlas with explicit observation validity masks and standardized frozen-encoder probing.}
 \label{tab:benchmark_comparison}
 \end{table*}

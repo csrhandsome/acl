@@ -1,16 +1,34 @@
 \section{Retargeting Implementation Details}
 \label{app:retarget}
-\paragraph{Sharpa Route (Route~A).}
-Joint states follow the 22-DoF URDF ordering per hand. Tactile mosaics ($2\times 5$) are converted to luminance and downsampled via \texttt{INTER\_AREA} to $240\times 240$ per finger, synchronized to state timestamps via millisecond seeking.
-The 16 inverse vector-retargeting residuals yield a 48-dim unit-vector residual concatenated with $0.08\theta \in \mathbb{R}^{15}$.
-A GPU-batched finite-difference Jacobian variant skins only the 5 fingertip vertices during optimization and reproduces CPU outputs identically.
 
-\paragraph{TacVerse and \texttt{StandardPad} Routes (Route~B).}
-TacVerse $400\times 700$ frames are transposed to $700\times 400$ for Xense SDK 2.1.2 depth inference without cropping or color distortion, then transposed back.
+\paragraph{Route A (Dexterous Hands).}
+Forward kinematics uses Pinocchio \citep{carpentier2019pinocchio} with the official 22-DoF Sharpa URDF per hand.
+Raw $2\times 5$ bimanual tactile mosaics are converted to luminance and downsampled via \texttt{INTER\_AREA} to $240\times 240$ per finger, synchronized to state timestamps via millisecond seeking.
+Inverse vector retargeting optimizes 16 unit direction vectors (wrist-to-fingertips, wrist-to-thumb-MC, and intra-finger phalanx links), yielding a 48-dim unit-vector residual concatenated with $0.08\theta \in \mathbb{R}^{15}$ (maximum 40 function evaluations per frame, tolerance $10^{-5}$, warm-started from the previous frame).
+A GPU-batched finite-difference Jacobian variant skins only the 5 fingertip vertices during optimization and reproduces CPU outputs identically.
+During distal-phalanx projection, manufacturer $240\times 240\times 3$ sensor point clouds (thumb \texttt{TH} and four-finger \texttt{4F} templates) are filtered to valid points ($|p| > 10^{-4}$), with multi-finger overlap resolved by nearest distance.
+Exported pose metadata (PCA pose, global orientation, translation, scale, skeletal keypoints, and per-vector angular errors) are stored in the Sharpa hand-root frame (mm).
+
+\paragraph{Route B (Parallel Grippers and \texttt{StandardPad}).}
+For TacVerse ($400\times 700$ BGR, 4 channels), static maximum-aperture windows (15-frame sliding window, aperture range $\le 0.02$) are filtered by RGB temporal stability (mean frame diff $\le 1.0$, 95th percentile $\le 4.0$), yielding 70,760 reference candidates hashed via SHA-256.
+Frames are transposed to $700\times 400$ for Xense SDK (v2.1.2) depth inference without cropping or color distortion, then transposed back, and projected through a frozen 778-vertex / 1,538-face barycentric table (\texttt{fixed\_mapping.h5}, $<1$~mm error).
 Optional \texttt{uint16} depth encoding maps $[-0.001, 0.4]$ to $[1, 65535]$ with 0 reserved for unknown (raising an error on out-of-range values rather than silent clipping).
+For additional two-finger gripper corpora (e.g., HapticWAM, DataClaw, TacRich, TaF, VitaSet), the \texttt{StandardPad} trend mode computes training-subset-frozen per-texel median baselines $b$ and 99th-percentile $|\Delta|$ scales $s$, encoding unsigned signals as $\mathrm{round}(255\cdot \mathrm{clip}(|v-b|/s, 0, 1))$ and signed shear around 128.
+
+\section{Corpus Mapping and Quality Audit}
+\label{app:audit}
+
+\paragraph{Raw Corpus and Model Identifiers.}
+In our released codebase (\texttt{uv\_mp4} configuration), the six unified corpora correspond to \texttt{SharpaDex-v1.0}, \texttt{trex\_dataset}, \texttt{RoCo\_TaskBoardAssembly}, \texttt{Robotic\_Origami\_Challenge}, \texttt{FTP-1-sharpa} (signal type \texttt{sharpa\_intensity}), and \texttt{TacVerse\_opendata} (signal type \texttt{depth\_proxy}).
+The \texttt{Recon} and \texttt{JEPA} encoder families correspond to \texttt{force\_encoder\_zero} and \texttt{force\_encoder\_jepa}, respectively.
+
+\paragraph{L0.0 Contract Audit and Known Diagnostics.}
+In our automated L0.0 contract audit, 909 leaf UV contact declarations (plus 122 TacVerse validity declarations) passed schema verification.
+For Route~A, solver convergence flags (\texttt{solver\_success}) and per-frame fingertip RMS residuals are logged explicitly (e.g., 22.96~mm left / 41.97~mm right on \texttt{SharpaDex} ep20); frames hitting the 40-evaluation cap are retained with \texttt{solver\_success=False} and should be filtered by residual before serving as kinematic ground truth.
+For Route~B, automated TacVerse reference frames are static maximum-aperture \emph{candidates} rather than guaranteed zero-contact ground truth, right-hand TacVerse UV maps currently reuse the left-hand correspondence (\texttt{unvalidated-mapping}, diagnostic only), and the offline adaptive-morphology fitting procedure generating \texttt{fixed\_mapping.h5} is slated for standalone release.
 
 \section{Probing and Statistical Testing Details}
 \label{app:probes}
 Probe hyperparameters (learning rate, epochs, $k$ for $k$-NN) are selected exclusively on the 5\% episode-level validation split (seed 42).
 Formal benchmark runs use at least 3 probe seeds and episode-grouped bootstrap resampling to compute 95\% confidence intervals, alongside paired permutation tests on identical evaluation samples.
-All reports record valid sample counts, bad sample counts, and explicit \texttt{null} entries for undefined metrics.
+All reports record valid sample counts, bad sample counts, and explicit \texttt{null} entries for undefined metrics (e.g., contact MAE on non-contact frames is never zero-filled).

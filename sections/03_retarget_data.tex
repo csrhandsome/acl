@@ -1,47 +1,47 @@
-\section{Cross-Embodiment Tactile Retargeting and Unified Dataset}
+\section{The \bench{} Dataset}
 \label{sec:retarget_data}
 
-\subsection{Canonical MANO UV Representation and Data Contract}
+\subsection{Canonical Surface and Data Contract}
 \label{sec:data_contract}
 To bridge heterogeneous robot morphologies without discarding spatial contact topology, we adopt the official $128\times 128$ MANO UV atlas \citep{romero2017embodied} as a canonical per-hand tactile representation.
-Bimanual recordings are stored as horizontally concatenated $128\times 256$ videos at 30~FPS (with grayscale replicated across RGB channels for standard video codecs).
+Bimanual recordings are stored as horizontally concatenated $128\times 256$ videos at 30~FPS.
 
-We enforce a strict \textbf{data contract} across all sources:
-(1) \emph{Contact proxy vs.\ physical force}: UV intensities are \texttt{uint8} contact intensity or depth proxy trends rather than calibrated Newton forces; cross-source gray levels are not directly comparable in absolute physical units.
-(2) \emph{Observed-zero vs.\ unknown}: Each texel carries a semantic distinction between a \texttt{contact} reading and a \texttt{valid} observation indicator. An unobserved region (e.g., an uncovered palm or a missing finger) is marked unknown and excluded from statistics rather than treated as zero contact.
-(3) \emph{Fixed scaling without per-frame normalization}: Source streams are read-only and mapped through fixed global or training-set-frozen scalers; per-frame auto-normalization is strictly prohibited to preserve relative load magnitude across time.
+To guarantee physical rigor and prevent silent evaluation artifacts, we enforce a strict three-part \textbf{data contract} across all sources:
+(1) \emph{Contact proxy vs.\ physical force}: uncalibrated UV gray levels represent contact intensity or depth proxy trends rather than calibrated Newton forces; physical units (N or N$\cdot$m) are reported exclusively when independent external wrench labels pass unit, coordinate-frame, and temporal alignment verification.
+(2) \emph{Observed-zero vs.\ unknown}: each texel semantically separates a contact reading from an observation validity indicator, excluding uncovered regions (e.g., uninstrumented palms or missing fingers) from statistics rather than conflating them with zero contact.
+(3) \emph{Fixed scaling without per-frame normalization}: all source streams are read-only and mapped through fixed global or training-set-frozen scalers; per-frame auto-normalization is prohibited so that relative load magnitudes remain comparable across time.
 
-\subsection{Dual-Route Retargeting Pipelines}
+\subsection{Dual-Route Retargeting}
 \label{sec:retarget_pipelines}
+Because articulated hands and parallel grippers differ fundamentally in kinematics, we construct two complementary retargeting routes that project onto the same MANO UV surface (full implementation parameters are detailed in Appendix~\ref{app:retarget}).
 
-\subsubsection{Route A: Dexterous Hand Retargeting (Sharpa $\rightarrow$ MANO UV)}
-For 22-DoF Sharpa dexterous hands equipped with fingertip deformation sensors ($240\times 240$ tactile streams organized as $2\times 5$ bimanual mosaics), we map joint kinematics and fingertip arrays onto the MANO UV surface in four stages:
+\paragraph{Route A: Dexterous Hands.}
+For 22-DoF Sharpa dexterous hands equipped with fingertip deformation arrays, we map joint kinematics and fingertip tactile streams onto the MANO UV surface in four stages:
 \begin{enumerate}[leftmargin=*,nosep]
-    \item \textbf{Forward Kinematics:} Using Pinocchio \citep{carpentier2019pinocchio} with the official Sharpa URDF, we compute 21 skeletal keypoints (wrist, metacarpals, proximal/distal phalanges, and 5 fingertips) from the 22-DoF joint angles $q$.
-    \item \textbf{Inverse Vector Retargeting:} Rather than optimizing raw vertex positions directly, we invert the vendor vector-retargeting objective by solving for MANO global axis-angle rotation $r \in \mathbb{R}^3$ and 15-DoF PCA pose coefficients $\theta \in \mathbb{R}^{15}$ (with fixed template shape $\beta$) via nonlinear least squares:
+    \item \textbf{Forward Kinematics:} Using the robot URDF, we compute 21 skeletal keypoints (wrist, metacarpals, phalanges, and fingertips) from joint angles $q$.
+    \item \textbf{Inverse Vector Retargeting:} We solve for MANO global axis-angle rotation $r \in \mathbb{R}^3$ and 15-DoF PCA pose $\theta \in \mathbb{R}^{15}$ via regularized nonlinear least squares:
     \begin{equation}
         \min_{r, \theta} \; \sum_{k=1}^{16} \left\| \hat{u}^{\text{MANO}}_k(r,\theta) - \hat{u}^{\text{Sharpa}}_k(q) \right\|_2^2 + \lambda \|\theta\|_2^2,
     \end{equation}
-    where $\{\hat{u}_k\}_{k=1}^{16}$ are unit direction vectors spanning wrist-to-fingertips, wrist-to-thumb-MC, and intra-finger phalanx links, and $\lambda = 0.08^2$. We warm-start each frame from the previous solution (maximum 40 function evaluations, tolerance $10^{-5}$), followed by Umeyama similarity alignment $(s, R, t)$ \citep{umeyama1991least} on 11 anchor keypoints (wrist, thumb MC, 4 MCPs, 5 fingertips). Left hands are mirrored along the $X$-axis with inverted face winding.
-    \item \textbf{Distal-Phalanx Surface Projection:} For each finger, we construct a local orthonormal frame anchored at the MANO fingertip vertex using the distal bone axis and palmar normal, scaling the manufacturer $240\times 240\times 3$ sensor point cloud (thumb \texttt{TH} and four-finger \texttt{4F} templates) to the distal phalanx length. Candidate MANO vertices are queried against valid sensor points ($|p|>10^{-4}$) via a KD-tree within a distance threshold (resolving multi-finger overlap by nearest distance). Grayscale luminance $v \in [0,255]$ is mapped with a fixed saturation scale $c = \mathrm{clip}(v/180, 0, 1)$.
-    \item \textbf{UV Atlas Rasterization:} Using a precomputed pose-invariant face-ID label map on the $128\times 128$ MANO UV atlas (with 1-pixel dilation to close UV seams), per-face intensities are encoded into \texttt{uint8} UV maps. Accompanying pose metadata (PCA pose, global orientation, translation, scale, skeletal keypoints, and per-vector angular errors) are exported in the Sharpa hand-root frame (mm).
+    where $\{\hat{u}_k\}_{k=1}^{16}$ are unit bone-direction vectors and $\lambda = 0.08^2$. Solutions are warm-started temporally and aligned via Umeyama similarity transform \citep{umeyama1991least} on 11 anchor keypoints, with left hands mirrored along the $X$-axis.
+    \item \textbf{Distal-Phalanx Projection:} Within a local orthonormal frame at each fingertip, the manufacturer sensor point cloud is scaled to the distal phalanx and queried against MANO vertices via KD-tree, mapping grayscale luminance $v \in [0,255]$ under a fixed saturation scale $c = \mathrm{clip}(v/180, 0, 1)$.
+    \item \textbf{UV Atlas Rasterization:} Per-face intensities are rasterized onto the $128\times 128$ MANO UV atlas via a pose-invariant face-ID map with 1-pixel seam dilation, alongside exported pose metadata and solver diagnostics.
 \end{enumerate}
 
-\subsubsection{Route B: Parallel Gripper Retargeting (TacVerse \& General Trend Mode)}
-Two-finger parallel grippers lack articulated human-like finger kinematics; therefore, we treat retargeting as a \emph{static tactile-pixel-to-MANO-surface correspondence} rather than joint-angle mapping:
+\paragraph{Route B: Parallel Grippers.}
+Two-finger parallel grippers lack human-like finger articulation; we therefore formulate retargeting as a \emph{static surface correspondence} from gripper pads to the MANO thumb and index finger footprints:
 \begin{enumerate}[leftmargin=*,nosep]
-    \item \textbf{No-Contact Reference Candidate Selection:} For vision-based tactile cameras (e.g., TacVerse, 4 channels at $400\times 700$ BGR), we identify static maximum-aperture windows (15-frame sliding window, aperture range $\le 0.02$) that pass RGB temporal stability checks (mean frame diff $\le 1.0$, 95th percentile $\le 4.0$), yielding 70,760 reference candidates hashed via SHA-256.
-    \item \textbf{Depth Reconstruction and Static Surface Mapping:} Using Xense SDK (v2.1.2) calibrated per sensor with its reference candidate, each frame is reconstructed into a float32 depth map. A frozen 778-vertex / 1,538-face correspondence table (\texttt{fixed\_mapping.h5}, verified to $<1$~mm barycentric reconstruction error) maps left and right gripper pad ROIs onto the MANO thumb and index finger surfaces, respectively.
-    \item \textbf{UV Projection and Fixed-Range Encoding:} Valid surface samples are projected onto the nearest $128\times 128$ texel and averaged per texel, leaving uncovered texels as \texttt{NaN}. Depth $d$ is encoded with a fixed range $c = \mathrm{clip}((d - 0.001)/(0.4 - 0.001), 0, 1)$ into a \texttt{uint8} contact proxy alongside an explicit binary \texttt{validity} mask.
-    \item \textbf{General \texttt{StandardPad} Trend Extension:} To support additional heterogeneous two-finger gripper corpora (e.g., HapticWAM, DataClaw, TacRich, TaF, VitaSet), we introduce a \texttt{trend} mode that projects arbitrary rectangular taxel/depth/pressure arrays onto the thumb/index UV footprint via nearest-texel mapping, applying training-subset-frozen normalization (per-texel median baseline $b$ and 99th-percentile $|\Delta|$ scale $s$): $\mathrm{round}(255\cdot \mathrm{clip}(|v-b|/s, 0, 1))$ for unsigned signals, and zero-centered encoding around 128 for signed shear components.
+    \item \textbf{Reference Frame Selection:} For visuo-tactile cameras (e.g., TacVerse), we automatically identify temporally stable, maximum-aperture windows to serve as no-contact reference candidates.
+    \item \textbf{Depth Reconstruction and Static Mapping:} Per-sensor calibrated depth maps are mapped onto the MANO thumb and index surfaces via a frozen 778-vertex barycentric correspondence table ($<1$~mm reconstruction error).
+    \item \textbf{Fixed-Range UV Encoding:} Valid surface samples are averaged onto the $128\times 128$ UV grid with uncovered texels marked unknown, encoding depth $d$ via a fixed range $c = \mathrm{clip}((d - 0.001)/(0.4 - 0.001), 0, 1)$ alongside an explicit binary validity mask.
+    \item \textbf{General Pad Extension (\texttt{StandardPad}):} To accommodate arbitrary rectangular taxel, depth, or pressure gripper arrays, we provide a general trend-projection mode that maps pads onto the thumb/index UV footprint using training-frozen per-texel baselines and 99th-percentile scaling (with zero-centered encoding for signed shear).
 \end{enumerate}
 
-\subsection{Multi-Source Dataset Curation and Quality Audit}
+\subsection{Dataset Statistics}
 \label{sec:dataset_stats}
-Table~\ref{tab:dataset_stats} summarizes the six primary sources unified under the \texttt{uv\_mp4} configuration.
-Five sources originate from Sharpa dexterous hands (\texttt{sharpa\_intensity}), including \texttt{FTP-1-sharpa} which provides partial 3-finger coverage (thumb, index, middle), while \texttt{TacVerse\_opendata} contributes visuo-tactile parallel gripper data (\texttt{depth\_proxy}) with explicit validity masks.
-In our L0.0 contract audit, 909 leaf UV contact declarations (plus 122 TacVerse validity declarations) passed schema verification.
-To ensure transparency, we explicitly log solver convergence flags (\texttt{solver\_success}) and per-frame fingertip RMS residuals for Route~A (e.g., 22.96~mm left / 41.97~mm right on \texttt{SharpaDex} ep20), as well as the candidate status of Route~B reference frames (see Limitations).
+Table~\ref{tab:dataset_stats} summarizes the six manipulation corpora unified under \bench{}.
+Five sources originate from Sharpa dexterous hands (contact intensity proxies), including FTP-1 which provides partial 3-finger coverage, while TacVerse contributes visuo-tactile parallel-gripper recordings (depth proxies) with explicit validity masks.
+All unified streams undergo automated contract auditing for schema compliance, frame alignment, and validity-mask integrity, alongside per-frame solver diagnostics (Appendix~\ref{app:audit}).
 
 \begin{table*}[t]
 \centering
@@ -49,18 +49,18 @@ To ensure transparency, we explicitly log solver convergence flags (\texttt{solv
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{llccccc}
 \toprule
-\textbf{Source Dataset} & \textbf{Embodiment} & \textbf{Physical Quantity} & \textbf{Coverage} & \textbf{Valid Mask} & \textbf{\# Episodes} & \textbf{\# Frames} \\
+\textbf{Source Corpus} & \textbf{Embodiment} & \textbf{Signal Type} & \textbf{Coverage} & \textbf{Valid Mask} & \textbf{\# Episodes} & \textbf{\# Frames} \\
 \midrule
-SharpaDex-v1.0 & Sharpa Dexterous Hand & \texttt{sharpa\_intensity} & 5 fingers & Planned & \tbd & \tbd \\
-trex\_dataset & Sharpa Dexterous Hand & \texttt{sharpa\_intensity} & 5 fingers & Planned & \tbd & \tbd \\
-RoCo\_TaskBoardAssembly & Sharpa Dexterous Hand & \texttt{sharpa\_intensity} & 5 fingers & Planned & \tbd & \tbd \\
-Robotic\_Origami\_Challenge & Sharpa Dexterous Hand & \texttt{sharpa\_intensity} & 5 fingers & Planned & \tbd & \tbd \\
-FTP-1-sharpa & Sharpa Dexterous Hand & \texttt{sharpa\_intensity} & 3 fingers (T/I/M) & Planned & \tbd & \tbd \\
-TacVerse\_opendata & Parallel Gripper (Visuo-Tac.) & \texttt{depth\_proxy} & 2 pads (T/I) & \checkmark & \tbd & \tbd \\
+SharpaDex & Dexterous Hand & Intensity proxy & 5 fingers & Planned & \tbd & \tbd \\
+T-Rex & Dexterous Hand & Intensity proxy & 5 fingers & Planned & \tbd & \tbd \\
+RoCo Assembly & Dexterous Hand & Intensity proxy & 5 fingers & Planned & \tbd & \tbd \\
+Origami & Dexterous Hand & Intensity proxy & 5 fingers & Planned & \tbd & \tbd \\
+FTP-1 & Dexterous Hand & Intensity proxy & 3 fingers (T/I/M) & Planned & \tbd & \tbd \\
+TacVerse & Parallel Gripper & Depth proxy & 2 pads (T/I) & \checkmark & \tbd & \tbd \\
 \midrule
-\textbf{Total (Unified \texttt{uv\_mp4})} & \textbf{Dexterous + Gripper} & \textbf{2 Proxy Quantities} & \textbf{2--5 Fingers} & \textbf{Partial} & \tbd & \tbd \\
+\textbf{Total (Unified)} & \textbf{Dexterous + Gripper} & \textbf{2 Proxy Types} & \textbf{2--5 Fingers} & \textbf{Partial} & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
-\caption{Summary of the six primary tactile corpora unified into the canonical $128\times 256$ (30~FPS) MANO UV format. Exact episode and frame counts will be populated upon completion of the six-source train/val/test manifest.}
+\caption{Summary of the six tactile corpora unified into the canonical $128\times 256$ (30~FPS) MANO UV format. Raw corpus identifiers and audit details are listed in Appendix~\ref{app:audit}; exact episode and frame counts will be populated upon completion of the six-source manifest.}
 \label{tab:dataset_stats}
 \end{table*}

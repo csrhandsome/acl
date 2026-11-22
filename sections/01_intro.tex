@@ -1,26 +1,33 @@
 \section{Introduction}
 \label{sec:intro}
 
-Rich tactile feedback is indispensable for dexterous manipulation, enabling agents to perceive contact localization, load distribution, and incipient slip that vision alone cannot reliably resolve.
+Rich tactile feedback is indispensable for dexterous manipulation, enabling robots to perceive contact localization, load distribution, and incipient slip that vision alone cannot reliably resolve.
 Despite rapid progress in tactile hardware and self-supervised tactile encoders \citep{higuera2024sparsh,feng2025anytouch}, building general-purpose tactile representations remains bottlenecked by two structural barriers.
 
-First, \textbf{cross-embodiment and cross-sensor heterogeneity} fractures tactile datasets into incompatible silos.
-Articulated dexterous hands (e.g., 22-DoF multi-fingered hands with fingertip deformation arrays) and two-finger parallel grippers (e.g., vision-based tactile sensors outputting RGB images or depth reconstructions) differ in kinematics, sensor geometry, physical quantity, and spatial coverage.
-Directly pooling raw tactile signals across embodiments is infeasible without a shared anatomical coordinate system, while naive per-frame normalization destroys absolute contact-intensity trends and conflates unobserved sensor regions with zero contact.
+First, \textbf{cross-embodiment and cross-sensor heterogeneity} fractures tactile data into incompatible silos.
+Articulated dexterous hands (e.g., multi-fingered hands with fingertip deformation arrays) and two-finger parallel grippers (e.g., visuo-tactile elastomer cameras) differ substantially in kinematics, sensor geometry, physical measurement modalities, and spatial coverage.
+Pooling raw tactile signals across embodiments is infeasible without a shared anatomical coordinate system, while naive per-frame normalization destroys relative contact-intensity trends and conflates unobserved sensor regions with zero contact.
 
-Second, \textbf{evaluation protocols for tactile encoders lack comparability and diagnostic rigor}.
-Prior work frequently compares encoders using their own training objectives, native decoders of unequal capacity, or end-to-end downstream fine-tuning.
-Such protocols cannot answer three fundamental questions about a \emph{frozen} tactile representation:
-(1) \emph{Information retention}: how accurately does the latent preserve contact location, spatial distribution, and intensity trends?
-(2) \emph{Frozen readability}: how easily can contact-related and physical quantities be decoded by low-capacity, standardized probes?
+Second, \textbf{existing evaluation protocols lack diagnostic comparability}.
+Prior work frequently compares tactile encoders through their own pre-training objectives, native decoders of unequal capacity, or end-to-end downstream fine-tuning.
+Such protocols conflate representation quality with decoder or policy capacity and leave three fundamental questions about a \emph{frozen} tactile representation unanswered:
+(1) \emph{Information retention}: how faithfully does the latent preserve contact geometry and intensity trends?
+(2) \emph{Frozen readability}: how easily can contact proxies, physical forces, and temporal dynamics be decoded by standardized low-capacity probes?
 (3) \emph{Generalization}: does this readability hold across data sources, embodiments, physical quantities, and input perturbations?
 
-To address these challenges, we introduce \bench{}, a unified cross-embodiment tactile retargeting framework, curated canonical dataset, and frozen representation benchmark.
-Crucially, we enforce a strict physical terminology and data contract: uncalibrated UV gray-level signals represent \emph{tactile intensity / contact proxy trends} rather than calibrated Newton forces, and physical units (N or N$\cdot$m) are reported exclusively when independent external wrench labels pass unit, coordinate-frame, and temporal alignment verification.
+\begin{figure*}[t]
+    \centering
+    \fbox{\parbox[c][4.2cm][c]{0.95\textwidth}{\centering\small\textcolor{gray}{[Figure 1 Placeholder: Overview of \bench{}. Left: Dual-route cross-embodiment retargeting (dexterous hands and parallel grippers) onto the canonical MANO UV atlas with validity masks. Right: Three-tier frozen representation evaluation hierarchy (L0 retention, L1 proxy/physical/temporal readability, L2 generalization). ]}}}
+    \caption{Overview of \bench{}. Heterogeneous tactile streams from articulated dexterous hands and two-finger parallel grippers are mapped onto a canonical MANO UV hand-surface atlas under a fixed-scale, validity-aware data contract, enabling standardized L0--L2 probing of frozen tactile encoders.}
+    \label{fig:overview}
+\end{figure*}
+
+To address these barriers, we introduce \bench{} (Figure~\ref{fig:overview}), a unified cross-embodiment tactile dataset and frozen representation benchmark.
+By projecting both articulated dexterous hands and parallel grippers onto a shared MANO UV surface \citep{romero2017embodied} under a fixed-scale, validity-aware data contract, \bench{} decouples tactile representation learning from embodiment-specific sensor formats and enables fair, apples-to-apples probing of frozen encoders.
 
 Our contributions are threefold:
 \begin{itemize}[leftmargin=*,nosep]
-    \item \textbf{Dual-Route Cross-Embodiment Retargeting:} We develop two complementary pipelines mapping heterogeneous tactile embodiments onto a canonical $128\times 128$ MANO UV atlas \citep{romero2017embodied}: (i) an articulated dexterous-hand route combining inverse vector retargeting, Umeyama alignment, and distal-phalanx KD-tree surface projection; and (ii) a parallel-gripper route combining automated no-contact reference selection, depth reconstruction, and static surface correspondence, alongside a general \texttt{StandardPad} trend mode for arbitrary gripper tactile arrays.
-    \item \textbf{Unified Multi-Source Canonical Dataset:} Applying these pipelines under a strict fixed-scale, read-only data contract, we unify six diverse manipulation corpora---five Sharpa dexterous-hand sources and one visuo-tactile gripper source---into a standardized bimanual UV video format ($128\times 256$, 30~FPS) with explicit separation of contact trends and sensor validity masks.
-    \item \textbf{Frozen Representation Benchmark and Encoder Validation:} We construct \bench{} with a hierarchical L0--L2 task suite, standardized low-capacity probes (projected readout, $k$-NN, and attentive readout), episode-level splits, and rigorous statistical testing. Using our unified data, we train and systematically evaluate a controlled family of CNN and ViT tactile encoders under pixel-reconstruction (\texttt{force\_encoder\_zero}) and latent-prediction (\texttt{force\_encoder\_jepa}) objectives against non-learned and external baselines.
+    \item \textbf{Dual-Route Retargeting:} We introduce two complementary pipelines that map both articulated dexterous hands and two-finger parallel grippers onto a canonical MANO UV hand-surface atlas while preserving relative intensity trends and explicit sensor validity masks.
+    \item \textbf{Unified Multi-Source Dataset:} Under a strict fixed-scale data contract, we unify six manipulation corpora---spanning five dexterous-hand sources and one visuo-tactile gripper source---into a standardized bimanual UV video format.
+    \item \textbf{Frozen Representation Benchmark:} We establish a hierarchical L0--L2 evaluation suite with standardized low-capacity probes and episode-level splits, systematically benchmarking controlled families of pixel-reconstruction and latent-prediction tactile encoders alongside non-learned and external baselines.
 \end{itemize}
