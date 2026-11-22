@@ -21,7 +21,7 @@ For 22-DoF Sharpa dexterous hands equipped with fingertip deformation arrays, we
     \item \textbf{Forward Kinematics:} Using the robot URDF, we compute 21 skeletal keypoints (wrist, metacarpals, phalanges, and fingertips) from joint angles $q$.
     \item \textbf{Inverse Vector Retargeting:} We solve for MANO global axis-angle rotation $r \in \mathbb{R}^3$ and 15-DoF PCA pose $\theta \in \mathbb{R}^{15}$ via regularized nonlinear least squares:
     \begin{equation}
-        \min_{r, \theta} \; \sum_{k=1}^{16} \left\| \hat{u}^{\text{MANO}}_k(r,\theta) - \hat{u}^{\text{Sharpa}}_k(q) \right\|_2^2 + \lambda \|\theta\|_2^2,
+        \min_{r, \theta} \sum_{k=1}^{16} \| \hat{u}^{\text{MANO}}_k(r,\theta) - \hat{u}^{\text{Sharpa}}_k(q) \|_2^2 + \lambda \|\theta\|_2^2,
     \end{equation}
     where $\{\hat{u}_k\}_{k=1}^{16}$ are unit bone-direction vectors and $\lambda = 0.08^2$. Solutions are warm-started temporally and aligned via Umeyama similarity transform \citep{umeyama1991least} on 11 anchor keypoints, with left hands mirrored along the $X$-axis.
     \item \textbf{Distal-Phalanx Projection:} Within a local orthonormal frame at each fingertip, the manufacturer sensor point cloud is scaled to the distal phalanx and queried against MANO vertices via KD-tree, mapping grayscale luminance $v \in [0,255]$ under a fixed saturation scale $c = \mathrm{clip}(v/180, 0, 1)$.

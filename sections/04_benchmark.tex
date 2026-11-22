@@ -18,6 +18,7 @@ We organize the benchmark into a three-tier hierarchy (Table~\ref{tab:task_matri
 \centering
 \small
 \setlength{\tabcolsep}{4.5pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llll}
 \toprule
 \textbf{Tier} & \textbf{Sub-Task} & \textbf{Measurement Target} & \textbf{Primary Metrics} \\
@@ -44,7 +45,8 @@ We organize the benchmark into a three-tier hierarchy (Table~\ref{tab:task_matri
  & L2.qty & Intensity proxy $\leftrightarrow$ depth proxy & Zero-shot rank/cls + target-calibrated reg. \\
  & L2.rob & Occlusion, noise, downsampling, frame drop & Degradation curve vs.\ perturbation level \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \caption{Hierarchical evaluation taxonomy in \bench{}. L1b physical units (N, N$\cdot$m) are reported only when external wrench labels pass unit, coordinate, and temporal alignment verification. Data contract auditing (L0.0) is detailed in Appendix~\ref{app:audit}.}
 \label{tab:task_matrix}
 \end{table*}

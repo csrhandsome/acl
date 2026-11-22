@@ -41,11 +41,13 @@ External & HY-X / SharpaWave / etc. & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & 
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llcccccccc}
 \toprule
 \textbf{Encoder} & \textbf{Probe} & \multicolumn{4}{c}{\textbf{L1a: Contact Proxy Readability}} & \multicolumn{3}{c}{\textbf{L1c: Temporal Dynamics}} & \textbf{L1b} \\
 \cmidrule(lr){3-6} \cmidrule(lr){7-9} \cmidrule(lr){10-10}
- &  & \textbf{Load} ($R^2\uparrow$) & \textbf{Area} (MAE$\downarrow$) & \textbf{Center} (mm$\downarrow$) & \textbf{Pattern} (F1$\uparrow$) & \textbf{$\Delta F$} (NRMSE$\downarrow$) & \textbf{Event} (F1$\uparrow$) & \textbf{Phase} (Bal.\ Acc$\uparrow$) & \textbf{$F_n/F_t$} (N$\downarrow$) \\
+ &  & \textbf{Load} & \textbf{Area} & \textbf{Center} & \textbf{Pattern} & \textbf{$\Delta F$} & \textbf{Event} & \textbf{Phase} & \textbf{$F_n/F_t$} \\
+ &  & ($R^2\uparrow$) & (MAE$\downarrow$) & (mm$\downarrow$) & (F1$\uparrow$) & (NRMSE$\downarrow$) & (F1$\uparrow$) & (Bal.\ Acc$\uparrow$) & (N$\downarrow$) \\
 \midrule
 Raw / PCA / Rand. & Proj / kNN & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \texttt{Recon}-CNN & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
@@ -53,7 +55,8 @@ Raw / PCA / Rand. & Proj / kNN & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd 
 \texttt{JEPA} (1f) & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \texttt{JEPA} (video) & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \caption{L1 Frozen Readability results across projected readout (Proj), $k$-NN, and attentive (Attn) probes. L1a evaluates UV contact proxy trends; L1b physical force (N) is reported only on externally verified wrench subsets.}
 \label{tab:l1_readability}
 \end{table*}
@@ -61,9 +64,9 @@ Raw / PCA / Rand. & Proj / kNN & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd 
 \subsection{Generalization and Robustness}
 \label{sec:exp_l2}
 Table~\ref{tab:l2_generalization} evaluates L2 generalization across three transfer axes:
-(1) \emph{Cross-source (\texttt{L2.src})} among the five dexterous-hand corpora;
-(2) \emph{Cross-embodiment and cross-quantity (\texttt{L2.emb} / \texttt{L2.qty})} between dexterous hands (intensity proxy) and parallel grippers (depth proxy), reporting zero-shot ranking/classification, few-shot target-calibrated regression, and target upper bounds; and
-(3) \emph{Perturbation robustness (\texttt{L2.rob})} under controlled occlusion, Gaussian noise, spatial downsampling, and frame dropout (with labels anchored to unperturbed inputs).
+(1) \emph{Cross-source} (\texttt{L2.src}) among the five dexterous-hand corpora;
+(2) \emph{Cross-embodiment and cross-quantity} (\texttt{L2.emb} / \texttt{L2.qty}) between dexterous hands (intensity proxy) and parallel grippers (depth proxy), reporting zero-shot ranking/classification, few-shot target-calibrated regression, and target upper bounds; and
+(3) \emph{Perturbation robustness} (\texttt{L2.rob}) under controlled occlusion, Gaussian noise, spatial downsampling, and frame dropout (with labels anchored to unperturbed inputs).
 Pre-training source overlap with target domains is disclosed for every transfer pair.
 
 \begin{table*}[t]
