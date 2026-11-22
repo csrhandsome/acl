@@ -1,0 +1,121 @@
+\section{Experiments and Diagnostic Analysis}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+\label{sec:exp_setup}
+All encoders are pre-trained on the unified MANO UV training split and frozen prior to offline feature extraction.
+Unless stated otherwise, experiments follow the fair probing protocol in Section~\ref{sec:protocol}: episode-level splits (seed 42, 5\% validation, single-read held-out test), $\ge 3$ probe seeds, episode-grouped 95\% bootstrap confidence intervals, and paired permutation tests for model comparisons.
+We explicitly separate single-frame (last-frame adapter) and multi-frame (16-frame stride-1 / stride-2) input budgets, as well as isolated single-hand vs.\ bimanual context modes.
+\emph{Note: All tables below define the formal experimental protocol and reporting schema; entries marked \tbd{} will be populated upon completion of full six-source pre-training and independent test evaluation.}
+
+\subsection{Information Retention and Frozen Readability (L0 \& L1)}
+\label{sec:exp_l0_l1}
+Table~\ref{tab:l0_retention} evaluates L0.2 unified small-decoder reconstruction to measure how faithfully each frozen latent preserves spatial contact geometry and intensity trends, decoupled from native decoder capacity.
+Table~\ref{tab:l1_readability} reports L1a contact proxy readability (\texttt{load}, \texttt{area}, \texttt{center}, \texttt{pattern}) and L1c temporal dynamics (\texttt{dF}, \texttt{event}, \texttt{phase}) across projected readout, $k$-NN, and attentive probes.
+Where external force/wrench labels pass unit, coordinate, and temporal alignment verification, L1b calibrated physical force results will be reported separately in Newtons (N / N$\cdot$m).
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llcccccccc}
+\toprule
+\textbf{Model Family} & \textbf{Spec / Recipe} & \textbf{Latent} & \textbf{Input} & \textbf{Contact} & \textbf{Non-Cont.} & \textbf{IoU} & \textbf{Dice} & \textbf{Load Rel.} & \textbf{Peak} \\
+ &  & \textbf{Dim} & \textbf{Mode} & \textbf{MAE $\downarrow$} & \textbf{MAE $\downarrow$} & \textbf{$\uparrow$} & \textbf{$\uparrow$} & \textbf{Err. $\downarrow$} & \textbf{Err. $\downarrow$} \\
+\midrule
+Raw Pixels & $16\times 16$ downsample & 256 & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+PCA & Train-fit linear & 32 & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+Random CNN & Fixed-seed init & 64 & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\midrule
+\texttt{zero} CNN & tiny / small / base / large & 512 & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{zero} ViT & tiny / small / base / large & 512 & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{JEPA} ViT & 1f-EMA / 1f-SIGReg & $D_{\text{vit}}$ & 1f-iso & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{JEPA} ViT & vid-EMA / vid-SIGReg & $D_{\text{vit}}$ & 16f-s2 & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\midrule
+External (TBD) & HY-X / SharpaWave / etc. & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\caption{L0.2 Unified Small-Decoder Reconstruction results on the held-out test set. All models share an identical low-capacity probe decoder to measure latent information retention fairly.}
+\label{tab:l0_retention}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccccccc}
+\toprule
+\textbf{Encoder} & \textbf{Probe} & \multicolumn{4}{c}{\textbf{L1a: Contact Proxy Readability}} & \multicolumn{3}{c}{\textbf{L1c: Temporal Dynamics}} & \textbf{L1b} \\
+\cmidrule(lr){3-6} \cmidrule(lr){7-9} \cmidrule(lr){10-10}
+ &  & \textbf{Load} ($R^2\uparrow$) & \textbf{Area} (MAE$\downarrow$) & \textbf{Center} (mm$\downarrow$) & \textbf{Pattern} (F1$\uparrow$) & \textbf{$\Delta F$} (NRMSE$\downarrow$) & \textbf{Event} (F1$\uparrow$) & \textbf{Phase} (Bal.\ Acc$\uparrow$) & \textbf{$F_n/F_t$} (N$\downarrow$) \\
+\midrule
+Raw / PCA / Rand. & Proj / kNN & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{zero} CNN & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{zero} ViT & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{JEPA} (1f) & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{JEPA} (video) & Proj / kNN / Attn & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\caption{L1 Frozen Readability results across projected readout (Proj), $k$-NN, and attentive (Attn) probes. L1a evaluates UV contact proxy trends; L1b physical force (N) is reported only on externally verified wrench subsets.}
+\label{tab:l1_readability}
+\end{table*}
+
+\subsection{Cross-Source, Cross-Embodiment, and Perturbation Generalization (L2)}
+\label{sec:exp_l2}
+Table~\ref{tab:l2_generalization} summarizes generalization across three transfer axes:
+(1) \emph{Cross-source (\texttt{L2.src})} among the five Sharpa dexterous-hand datasets;
+(2) \emph{Cross-embodiment and cross-quantity (\texttt{L2.emb} / \texttt{L2.qty})} between Sharpa dexterous hands (\texttt{sharpa\_intensity}) and TacVerse parallel grippers (\texttt{depth\_proxy}), reporting zero-shot ranking/classification, few-shot target-domain calibrated regression, and target-domain upper bounds; and
+(3) \emph{Perturbation robustness (\texttt{L2.rob})} under controlled occlusion, Gaussian noise, spatial downsampling, and frame dropout (with labels anchored to unperturbed inputs).
+Pre-training source overlap with target domains is explicitly disclosed for every transfer pair.
+
+\begin{table*}[t]
+\centering
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Encoder} & \multicolumn{2}{c}{\textbf{L2.src (Sharpa Cross-Src)}} & \multicolumn{3}{c}{\textbf{L2.emb / L2.qty (Dexterous $\leftrightarrow$ Gripper)}} & \multicolumn{2}{c}{\textbf{L2.rob (Perturbations)}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(lr){7-8}
+ & \textbf{Zero-Shot} & \textbf{Calibrated} & \textbf{Zero-Shot} ($\rho$/F1) & \textbf{Calibrated} & \textbf{Target UB} & \textbf{Occ./Noise} & \textbf{Down./Drop} \\
+\midrule
+Raw / PCA / Rand. & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{zero} CNN & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{zero} ViT & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\texttt{JEPA} (1f / video) & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}%
+}
+\caption{L2 Generalization and Robustness protocol. For cross-quantity transfers (\texttt{sharpa\_intensity} $\leftrightarrow$ \texttt{depth\_proxy}), zero-shot evaluation uses rank/classification metrics rather than uncalibrated gray-level errors.}
+\label{tab:l2_generalization}
+\end{table*}
+
+\subsection{Controlled Ablations and Diagnostic Findings}
+\label{sec:exp_ablations}
+To isolate architectural and training-objective effects under controlled data budgets, we organize six diagnostic comparisons (Table~\ref{tab:ablations}):
+(1) \textbf{Architecture (CNN vs.\ ViT):} Comparing \texttt{zero} CNN and ViT across \texttt{tiny}--\texttt{large} while reporting parameter count, latent dimensionality, and inference cost.
+(2) \textbf{Objective (Reconstruction vs.\ Latent Prediction):} Comparing pixel-reconstruction (\texttt{zero}) against latent prediction (\texttt{JEPA} EMA and SIGReg).
+(3) \textbf{Spatial vs.\ Global Latents:} Comparing compact 512-dim global bottlenecks against multi-token spatial latents while explicitly disclosing total latent element counts.
+(4) \textbf{Temporal Context (Single-Frame vs.\ Video):} Quantifying the gain of 16-frame video encoders over single-frame encoders on L1c future-change and event tasks.
+(5) \textbf{Hand Context (Isolated vs.\ Bimanual):} Measuring the benefit of bimanual context versus isolated single-hand inputs.
+(6) \textbf{Scaling and Stability:} Separating training stability (convergence rate, numerical precision) from downstream probing gains across model scales and data fractions (1\% / 10\% / 100\%).
+
+\begin{table}[t]
+\centering
+\small
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{llcc}
+\toprule
+\textbf{Diagnostic Axis} & \textbf{Controlled Variants} & \textbf{L0.2} & \textbf{L1 / L1c} \\
+\midrule
+Architecture & \texttt{zero} CNN vs.\ ViT & \tbd & \tbd \\
+Objective & \texttt{zero} vs.\ JEPA (EMA/SIGReg) & \tbd & \tbd \\
+Latent Form & Global (512d) vs.\ Spatial tokens & \tbd & \tbd \\
+Temporal & Single-frame vs.\ 16f Video & \tbd & \tbd \\
+Hand Context & Isolated vs.\ Bimanual & \tbd & \tbd \\
+Model Scale & \texttt{tiny} / \texttt{small} / \texttt{base} / \texttt{large} & \tbd & \tbd \\
+\bottomrule
+\end{tabular}%
+}
+\caption{Summary of controlled ablation axes in \bench{}.}
+\label{tab:ablations}
+\end{table}

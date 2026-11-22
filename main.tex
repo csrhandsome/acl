@@ -1,0 +1,50 @@
+\documentclass[11pt]{article}
+
+\usepackage[review]{acl}
+
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newcommand{\bench}{\textsc{ForceBench}}
+\newcommand{\tbd}{\textcolor{gray}{--}}
+
+\title{\bench{}: Unifying Cross-Embodiment Tactile Sensing via Canonical Hand-Surface Retargeting and Frozen Representation Probing}
+
+\author{Anonymous ACL Submission}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Tactile sensing is essential for contact-rich robotic manipulation, yet tactile data remains fragmented across heterogeneous sensor modalities, resolutions, and robot embodiments---ranging from multi-fingered dexterous hands to two-finger parallel grippers.
+Moreover, existing tactile representation encoders are typically evaluated by their own native reconstruction losses or task-specific fine-tuning, obscuring how much contact geometry, intensity trend, and dynamic information is actually preserved and linearly or compactly readable from frozen latent representations.
+In this work, we present \bench{}, a unified cross-embodiment tactile data pipeline and frozen representation benchmark.
+First, we introduce two complementary retargeting pipelines---inverse vector retargeting with distal-phalanx surface projection for articulated dexterous hands, and fixed surface correspondence (extended via a general \texttt{StandardPad} trend mode) for parallel grippers---that map heterogeneous tactile streams onto a canonical $128\times 128$ MANO UV hand-surface atlas while strictly separating observed contact trends from sensor validity masks.
+Second, we curate a unified multi-source dataset spanning six dexterous-hand and visuo-tactile gripper corpora under a read-only, fixed-scale data contract without per-frame auto-normalization.
+Third, we establish a three-level evaluation hierarchy (L0 information retention, L1 frozen readability of contact proxies, verified physical forces, and temporal dynamics, and L2 cross-source, cross-embodiment, and perturbation generalization) under a fair frozen-encoder probing protocol, and benchmark a suite of self-trained reconstruction (\texttt{zero}) and latent-prediction (\texttt{JEPA}) encoders alongside non-learned and external baselines.
+\end{abstract}
+
+\input{sections/01_intro}
+\input{sections/02_related}
+\input{sections/03_retarget_data}
+\input{sections/04_benchmark}
+\input{sections/05_experiments}
+\input{sections/06_conclusion}
+
+\bibliography{references}
+
+\appendix
+\input{sections/appendix}
+
+\end{document}

@@ -1,0 +1,21 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We introduced \bench{}, an end-to-end cross-embodiment tactile retargeting pipeline, unified canonical dataset, and frozen representation benchmark.
+By mapping both articulated dexterous hands and two-finger parallel grippers onto a shared $128\times 128$ MANO UV atlas under a strict fixed-scale data contract, \bench{} enables apples-to-apples evaluation of frozen tactile encoders across information retention (L0), contact proxy, verified physical force, and temporal dynamic readability (L1), and cross-domain generalization (L2).
+Together with our controlled suite of reconstruction (\texttt{zero}) and latent-prediction (\texttt{JEPA}) tactile encoders, \bench{} provides a reproducible foundation for studying what tactile representations capture and how well they transfer across robot embodiments.
+
+\section*{Limitations}
+\label{sec:limitations}
+
+We highlight several important technical boundaries and limitations of the current framework:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Contact Proxy vs.\ Calibrated Physical Force:} UV grayscale values represent fixed-scale tactile intensity (Sharpa) or depth proxy trends (TacVerse), not calibrated Newton forces. Cross-source gray levels are not directly comparable in absolute physical units, and L1b physical force/wrench reporting requires independent external labels verified for units, coordinate frames, and temporal alignment.
+    \item \textbf{Route~A Retargeting Accuracy and Coverage Masks:} Inverse vector retargeting on Sharpa hands exhibits non-zero fingertip alignment residuals (e.g., 22.96~mm left / 41.97~mm right RMS on \texttt{SharpaDex} ep20), and frames hitting the 40-evaluation cap are retained with \texttt{solver\_success=False}; exported poses should therefore be filtered by residual before serving as kinematic ground truth. Furthermore, current Sharpa UV outputs lack an explicit per-source validity mask, meaning zero values can conflate observed-zero contact with uncovered surface regions (e.g., 3-finger coverage in \texttt{FTP-1-sharpa}).
+    \item \textbf{Route~B Reference Candidates and Right-Hand Mapping:} Automated TacVerse no-contact reference frames are static maximum-aperture \emph{candidates} rather than guaranteed zero-contact ground truth. Additionally, right-hand TacVerse UV maps currently reuse the left-hand surface correspondence (\texttt{unvalidated-mapping}, diagnostic only), and the offline adaptive-morphology fitting procedure generating \texttt{fixed\_mapping.h5} requires full documentation and standalone release.
+    \item \textbf{Scope of Evaluation and Preliminary Status:} Physics consistency (L3) and closed-loop manipulation control (L4) remain future work. Dedicated event-latency matching and full six-source independent test evaluations are ongoing and will replace the placeholder entries in Section~\ref{sec:experiments}.
+\end{itemize}
+
+\section*{Ethics Statement}
+All tactile datasets unified in this work are derived from publicly available or institutionally authorized robotic manipulation corpora containing no personally identifiable human subject data.
+Our retargeting and benchmarking software introduces no direct dual-use safety hazards; however, deploying uncalibrated tactile proxies in safety-critical physical human-robot interaction without hardware-level force calibration could cause unintended contact forces, which we explicitly caution against in our data contract and limitations.

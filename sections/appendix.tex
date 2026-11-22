@@ -1,0 +1,16 @@
+\section{Retargeting Implementation Details}
+\label{app:retarget}
+\paragraph{Sharpa Route (Route~A).}
+Joint states follow the 22-DoF URDF ordering per hand. Tactile mosaics ($2\times 5$) are converted to luminance and downsampled via \texttt{INTER\_AREA} to $240\times 240$ per finger, synchronized to state timestamps via millisecond seeking.
+The 16 inverse vector-retargeting residuals yield a 48-dim unit-vector residual concatenated with $0.08\theta \in \mathbb{R}^{15}$.
+A GPU-batched finite-difference Jacobian variant skins only the 5 fingertip vertices during optimization and reproduces CPU outputs identically.
+
+\paragraph{TacVerse and \texttt{StandardPad} Routes (Route~B).}
+TacVerse $400\times 700$ frames are transposed to $700\times 400$ for Xense SDK 2.1.2 depth inference without cropping or color distortion, then transposed back.
+Optional \texttt{uint16} depth encoding maps $[-0.001, 0.4]$ to $[1, 65535]$ with 0 reserved for unknown (raising an error on out-of-range values rather than silent clipping).
+
+\section{Probing and Statistical Testing Details}
+\label{app:probes}
+Probe hyperparameters (learning rate, epochs, $k$ for $k$-NN) are selected exclusively on the 5\% episode-level validation split (seed 42).
+Formal benchmark runs use at least 3 probe seeds and episode-grouped bootstrap resampling to compute 95\% confidence intervals, alongside paired permutation tests on identical evaluation samples.
+All reports record valid sample counts, bad sample counts, and explicit \texttt{null} entries for undefined metrics.

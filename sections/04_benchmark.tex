@@ -1,0 +1,75 @@
+\section{The \bench{} Evaluation Suite}
+\label{sec:benchmark}
+
+\subsection{Hierarchical Probing Taxonomy (L0--L2)}
+\label{sec:taxonomy}
+\bench{} evaluates \emph{frozen} tactile encoder latents rather than comparing heterogeneous pre-training losses.
+We organize evaluation into a three-tier hierarchy (summarized in Table~\ref{tab:task_matrix}):
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{L0 (Information Retention):} Verifies data contract compliance (\texttt{L0.0}), measures diagnostic native-decoder reconstruction (\texttt{L0.1}), and conducts primary cross-model comparison via a \emph{unified low-capacity probe decoder} (\texttt{L0.2}) reporting contact/non-contact MAE, Dice, IoU, total-load relative error, and peak error.
+    \item \textbf{L1 (Frozen Readability):} Decouples readout into three sub-tiers:
+    \texttt{L1a} \emph{Contact Proxies} (regional intensity proxy load, valid-region contact area, surface contact center, and multi-finger contact pattern);
+    \texttt{L1b} \emph{Calibrated Physical Force/Wrench} (per-finger normal/tangential force $F_n, F_t$, 6-axis wrench, and common-frame resultant force---strictly gated on verified unit, coordinate, and time alignment); and
+    \texttt{L1c} \emph{Temporal Contact Dynamics} (future $k$-frame proxy/force change $\Delta F$, contact onset/offset events, 5-stage contact phase, and Coulomb-verified slip).
+    \item \textbf{L2 (Generalization and Robustness):} Evaluates frozen transfer under in-source OOD splits (\texttt{L2.in}), cross-source transfer (\texttt{L2.src}), cross-embodiment dexterous$\leftrightarrow$gripper transfer (\texttt{L2.emb}), cross-quantity transfer (\texttt{L2.qty}: zero-shot ranking/classification plus target-domain calibrated regression), and input perturbations (\texttt{L2.rob}: occlusion, additive noise, downsampling, and frame drop).
+\end{itemize}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llll}
+\toprule
+\textbf{Tier} & \textbf{Sub-Task} & \textbf{Measurement Target} & \textbf{Primary Metrics} \\
+\midrule
+\multirow{3}{*}{\textbf{L0}} & L0.0 Contract Audit & Encoding, frame alignment, validity mask & Pass/Fail, bad-sample count \\
+ & L0.1 Native Recon. & Frozen encoder + native latent-only decoder & Contact/Non-contact MAE, Dice, IoU \\
+ & L0.2 Unified Recon. & Frozen encoder + shared small probe decoder & Contact/Non-contact MAE, Dice, IoU, Rel.\ Err. \\
+\midrule
+\multirow{4}{*}{\textbf{L1a}} & L1a.load & UV regional contact intensity proxy sum & $R^2$, Spearman $\rho$, NRMSE \\
+ & L1a.area & Contact area ratio within valid region & MAE (percentage points) \\
+ & L1a.center & Calibrated surface contact center (contact only) & Euclidean distance (mm) \\
+ & L1a.pattern & Multi-finger binary contact combination & Macro-F1 \\
+\midrule
+\multirow{3}{*}{\textbf{L1b}} & L1b.force & Verified per-finger normal/tangential force & Per-finger $F_n, F_t$ MAE, RMSE (N) \\
+ & L1b.wrench & Verified 6-DoF fingertip force \& torque & Per-axis MAE, RMSE (N / N$\cdot$m) \\
+ & L1b.total & Common-frame whole-hand resultant force & Magnitude MAE (N) \\
+\midrule
+\multirow{4}{*}{\textbf{L1c}} & L1c.dF & Future $k$-frame force or proxy delta & NRMSE (proxy) / MAE in N (verified force) \\
+ & L1c.event & Contact onset / offset detection & Event F1, latency (ms) \\
+ & L1c.phase & 5-phase contact state (none/onset/load/unload/release) & Balanced Accuracy, Macro-F1 \\
+ & L1c.slip & Incipient slip (verified shear/wrench sources only) & F1 \\
+\midrule
+\multirow{4}{*}{\textbf{L2}} & L2.in / L2.src & Held-out in-source / cross-source transfer & Zero-shot, calibrated, target upper bound \\
+ & L2.emb & Dexterous hand $\leftrightarrow$ parallel gripper transfer & Ranking / classification + calibrated L1 \\
+ & L2.qty & \texttt{sharpa\_intensity} $\leftrightarrow$ \texttt{depth\_proxy} & Zero-shot rank/cls + target-calibrated reg. \\
+ & L2.rob & Occlusion, noise, downsampling, frame drop & Degradation curve vs.\ perturbation level \\
+\bottomrule
+\end{tabular}
+\caption{Hierarchical evaluation taxonomy in \bench{}. L1b physical units (N, N$\cdot$m) are reported only when external wrench labels pass unit, coordinate, and temporal alignment verification. L3 (physics consistency) and L4 (closed-loop control) are reserved for future work.}
+\label{tab:task_matrix}
+\end{table*}
+
+\subsection{Fair Frozen-Encoder Probing Protocol}
+\label{sec:protocol}
+All models are evaluated by extracting offline features from \emph{frozen} encoder checkpoints; pre-training is strictly decoupled from probing.
+Within each task, every encoder shares identical inputs, labels, validity masks, and episode-level splits (default: 5\% validation sampled by whole episode with fixed seed 42; held-out test set read once).
+To assess representation geometry beyond a single readout head, every L1/L2 task evaluates three standardized probes:
+\begin{enumerate}[leftmargin=*,nosep]
+    \item \textbf{Projected Readout:} $\text{Linear}(D, 256) \rightarrow \text{LayerNorm} \rightarrow \text{Linear}(256, C)$. Because LayerNorm introduces a nonlinearity, we term this a \emph{projected readout} rather than a strict linear probe, and explicitly report the input projection parameter count when latent dimension $D$ differs across encoders.
+    \item \textbf{$k$-NN Probe:} Non-parametric $k$-nearest neighbors on pre-projection mean-pooled features, with $k$ selected solely on validation.
+    \item \textbf{Attentive Readout:} 256-dim projection followed by single-query cross-attention and a linear head (with token count disclosed, as single-token attention cannot reflect spatial selection).
+\end{enumerate}
+For temporal tasks, standard clips use 16 frames at stride 1, whereas video-JEPA clips use 16 frames at stride 2; single-frame models consume only the last frame via an explicit adapter, and input budgets are always reported side by side.
+By default, single-hand evaluation uses \emph{isolated} mode (masking the non-evaluated hand as unknown), while \emph{bimanual} context is evaluated in a separate explicit mode.
+Every probe is trained with at least 3 random head seeds; we report episode-grouped bootstrap confidence intervals, paired permutation tests on identical test samples, valid/bad sample counts, and \texttt{null} for undefined metrics (e.g., contact MAE on non-contact frames is never zero-filled).
+
+\subsection{Reference Tactile Encoder Suite}
+\label{sec:encoders}
+To validate \bench{} and provide strong baselines trained directly on our unified MANO UV corpus, we assemble four model groups:
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Non-Learned \& Random Baselines:} Raw pixels (downsampled to $16\times 16$ per hand), train-fitted PCA (32-dim), and a fixed-seed random small CNN (64-dim).
+    \item \textbf{\texttt{force\_encoder\_zero} (Pixel Reconstruction):} ConvNeXtV2-style CNN \citep{woo2023convnext} and ViT \citep{dosovitskiy2021image} encoders across four scales (\texttt{tiny}, \texttt{small}, \texttt{base}, \texttt{large}), trained on bimanual $128\times 256$ UV maps with a 512-dim global latent bottleneck.
+    \item \textbf{\texttt{force\_encoder\_jepa} (Latent Prediction):} Four ViT scales $\times$ four recipes (\{\texttt{single\_frame}, \texttt{video}\} $\times$ \{\texttt{EMA}, \texttt{SIGReg}\}), outputting coverage-weighted backbone features (teacher backbone for EMA; online backbone for SIGReg, excluding the training projector).
+    \item \textbf{External Candidate Adapters:} Via a generic TorchScript / adapter interface, \bench{} supports external tactile encoders (e.g., spatial vs.\ global branches of HY-X-Touch-fast, SharpaWave DeformEncoder, AnyTouch2, and Sparsh), strictly enforcing latent-only reconstruction (disclosing any input-contour bypasses) and pre-training data overlap audits.
+\end{itemize}
