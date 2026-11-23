@@ -13,12 +13,12 @@ To guarantee physical rigor and prevent silent evaluation artifacts, we enforce 
 
 \subsection{Dual-Route Retargeting}
 \label{sec:retarget_pipelines}
-Because articulated hands and parallel grippers differ fundamentally in kinematics, we construct two complementary retargeting routes (Figure~\ref{fig:retarget_pipeline}) that project onto the same MANO UV surface (full implementation parameters are detailed in Appendix~\ref{app:retarget}).
+Because articulated hands and parallel grippers differ fundamentally in kinematics, we construct two complementary retargeting routes (Figure~\ref{fig:retarget_pipeline}; full implementation parameters are detailed in Appendix~\ref{app:retarget}) that project onto the same MANO UV surface.
 
 \begin{figure*}[t]
     \centering
     \includegraphics[width=0.95\textwidth]{img/fig2_retarget_pipeline.jpg}
-    \caption{Dual-route cross-embodiment retargeting and data contract. Route A maps 22-DoF Sharpa dexterous hands via URDF forward kinematics, inverse vector retargeting, distal-phalanx KD-tree projection, and UV atlas rasterization. Route B maps parallel grippers via reference frame selection, 778-vertex barycentric correspondence, fixed-range UV encoding, and \texttt{StandardPad} projection, producing unified $128\times 256$ bimanual UV maps with explicit validity masks.}
+    \caption{Dual-route cross-embodiment retargeting and data contract. Route~A maps 22-DoF Sharpa dexterous hands via URDF forward kinematics, inverse vector retargeting, distal-phalanx KD-tree projection, and UV atlas rasterization. Route~B maps parallel grippers via reference frame selection, 778-vertex barycentric correspondence, fixed-range UV encoding, and \texttt{StandardPad} projection, producing unified $128\times 256$ bimanual UV maps with explicit validity masks.}
     \label{fig:retarget_pipeline}
 \end{figure*}
 
@@ -47,6 +47,8 @@ Two-finger parallel grippers lack human-like finger articulation; we therefore f
 \subsection{Dataset Statistics}
 \label{sec:dataset_stats}
 Table~\ref{tab:dataset_stats} and Figure~\ref{fig:dataset_uv_examples} summarize the six manipulation corpora unified under \bench{}.
+Five sources originate from Sharpa dexterous hands (contact intensity proxies), including FTP-1 which provides partial 3-finger coverage, while TacVerse contributes visuo-tactile parallel-gripper recordings (depth proxies) with explicit validity masks.
+All unified streams undergo automated contract auditing for schema compliance, frame alignment, and validity-mask integrity, alongside per-frame solver diagnostics (Appendix~\ref{app:audit}).
 
 \begin{figure*}[t]
     \centering
@@ -54,8 +56,6 @@ Table~\ref{tab:dataset_stats} and Figure~\ref{fig:dataset_uv_examples} summarize
     \caption{Representative bimanual MANO UV examples across the six unified corpora. Five dexterous-hand sources (\texttt{SharpaDex}, \texttt{T-Rex}, \texttt{RoCo Assembly}, \texttt{Origami}, and partial 3-finger \texttt{FTP-1}) provide contact intensity proxies, while \texttt{TacVerse} provides parallel-gripper depth proxies with explicit validity masks separating observed-zero from unknown texels.}
     \label{fig:dataset_uv_examples}
 \end{figure*}
-Five sources originate from Sharpa dexterous hands (contact intensity proxies), including FTP-1 which provides partial 3-finger coverage, while TacVerse contributes visuo-tactile parallel-gripper recordings (depth proxies) with explicit validity masks.
-All unified streams undergo automated contract auditing for schema compliance, frame alignment, and validity-mask integrity, alongside per-frame solver diagnostics (Appendix~\ref{app:audit}).
 
 \begin{table*}[t]
 \centering

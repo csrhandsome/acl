@@ -10,6 +10,7 @@ We explicitly separate single-frame and 16-frame video input budgets, as well as
 \subsection{Main Results}
 \label{sec:exp_main}
 Table~\ref{tab:l0_retention} evaluates L0.2 unified small-decoder reconstruction (illustrated qualitatively in Figure~\ref{fig:l0_qualitative}) to measure how faithfully each frozen latent retains spatial contact geometry and intensity trends independently of native decoder capacity.
+Table~\ref{tab:l1_readability} reports L1a contact proxy readability (\texttt{load}, \texttt{area}, \texttt{center}, \texttt{pattern}) and L1c temporal dynamics (\texttt{dF}, \texttt{event}, \texttt{phase}) across projected readout, $k$-NN, and attentive probes, with verified L1b physical forces reported separately in Newtons.
 
 \begin{figure*}[t]
     \centering
@@ -17,7 +18,6 @@ Table~\ref{tab:l0_retention} evaluates L0.2 unified small-decoder reconstruction
     \caption{Qualitative L0.2 unified probe UV reconstruction across 5-finger dexterous grasp, 3-finger partial hand (\texttt{FTP-1}), and 2-pad parallel gripper (\texttt{TacVerse}) samples (qualitative placeholder).}
     \label{fig:l0_qualitative}
 \end{figure*}
-Table~\ref{tab:l1_readability} reports L1a contact proxy readability (\texttt{load}, \texttt{area}, \texttt{center}, \texttt{pattern}) and L1c temporal dynamics (\texttt{dF}, \texttt{event}, \texttt{phase}) across projected readout, $k$-NN, and attentive probes, with verified L1b physical forces reported separately in Newtons.
 
 \begin{table*}[t]
 \centering
