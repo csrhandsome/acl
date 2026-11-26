@@ -7,8 +7,8 @@ To bridge heterogeneous robot morphologies without discarding spatial contact to
 Bimanual recordings are stored as horizontally concatenated $128\times 256$ videos at 30~FPS.
 
 To guarantee physical rigor and prevent silent evaluation artifacts, we enforce a strict three-part \textbf{data contract} across all sources:
-(1) \emph{Contact proxy vs.\ physical force}: uncalibrated UV gray levels represent contact intensity or depth proxy trends rather than calibrated Newton forces; physical units (N or N$\cdot$m) are reported exclusively when independent external wrench labels pass unit, coordinate-frame, and temporal alignment verification.
-(2) \emph{Observed-zero vs.\ unknown}: each texel semantically separates a contact reading from an observation validity indicator, excluding uncovered regions (e.g., uninstrumented palms or missing fingers) from statistics rather than conflating them with zero contact.
+(1) \emph{Contact proxy vs.\ physical force}: uncalibrated UV gray levels represent contact intensity or depth proxy trends rather than calibrated Newton forces—unified UV geometry does not imply unified physical force semantics across heterogeneous sensors (e.g., Sharpa deformation vs.\ TacVerse depth vs.\ normalized pad trends); physical units (N or N$\cdot$m) are reported exclusively when independent external wrench labels pass unit, coordinate-frame, and temporal alignment verification.
+(2) \emph{Observed-zero vs.\ unknown}: each texel semantically separates a contact reading from an observation validity indicator, distinguishing the \emph{MANO UV foreground mask} (hand mesh vs.\ background) from the \emph{sensor observation mask} (instrumented pads vs.\ uninstrumented fingers or palm) so that unobserved regions—which also appear black in UV renders—are excluded from statistics rather than conflated with zero contact.
 (3) \emph{Fixed scaling without per-frame normalization}: all source streams are read-only and mapped through fixed global or training-set-frozen scalers; per-frame auto-normalization is prohibited so that relative load magnitudes remain comparable across time.
 
 \subsection{Dual-Route Retargeting}
@@ -17,31 +17,31 @@ Because articulated hands and parallel grippers differ fundamentally in kinemati
 
 \begin{figure*}[t]
     \centering
-    \includegraphics[width=0.95\textwidth]{img/fig2_retarget_pipeline.jpg}
+    \includegraphics[width=0.95\textwidth]{img/fig2_retarget_pipeline_v2.png}
     \caption{Dual-route cross-embodiment retargeting and data contract. Route~A maps 22-DoF Sharpa dexterous hands via URDF forward kinematics, inverse vector retargeting, distal-phalanx KD-tree projection, and UV atlas rasterization. Route~B maps parallel grippers via reference frame selection, 778-vertex barycentric correspondence, fixed-range UV encoding, and \texttt{StandardPad} projection, producing unified $128\times 256$ bimanual UV maps with explicit validity masks.}
     \label{fig:retarget_pipeline}
 \end{figure*}
 
 \paragraph{Route A: Dexterous Hands.}
-For 22-DoF Sharpa dexterous hands equipped with fingertip deformation arrays, we map joint kinematics and fingertip tactile streams onto the MANO UV surface in four stages:
+For 22-DoF Sharpa dexterous hands equipped with fingertip deformation arrays, we perform per-frame direction-based robot-to-human kinematic retargeting (solving MANO pose from robot joint angles without neural training) followed by local-frame tactile transfer in four stages:
 \begin{enumerate}[leftmargin=*,nosep]
-    \item \textbf{Forward Kinematics:} Using the robot URDF, we compute 21 skeletal keypoints (wrist, metacarpals, phalanges, and fingertips) from joint angles $q$.
-    \item \textbf{Inverse Vector Retargeting:} We solve for MANO global axis-angle rotation $r \in \mathbb{R}^3$ and 15-DoF PCA pose $\theta \in \mathbb{R}^{15}$ via regularized nonlinear least squares:
+    \item \textbf{Forward Kinematics:} Because Sharpa's 22 joint angles and MANO's 45-DoF axis-angle rotations differ in joint count, axes, and link lengths, we first evaluate the robot URDF forward kinematics to map joint angles $q \in \mathbb{R}^{22}$ into a common 3D skeletal space of 21 keypoints $P^{\text{Sharpa}} \in \mathbb{R}^{21 \times 3}$ (wrist, metacarpals, phalanges, and fingertips).
+    \item \textbf{Inverse Vector Retargeting:} We solve for MANO global axis-angle rotation $r \in \mathbb{R}^3$ and 15-DoF PCA latent pose $z \in \mathbb{R}^{15}$ (expanded via $\theta = B_{45\times 15} z \in \mathbb{R}^{45}$) through regularized nonlinear least squares:
     \begin{equation}
-        \min_{r, \theta} \sum_{k=1}^{16} \| \hat{u}^{\text{MANO}}_k(r,\theta) - \hat{u}^{\text{Sharpa}}_k(q) \|_2^2 + \lambda \|\theta\|_2^2,
+        \min_{r, z} \sum_{k=1}^{16} \| \hat{u}^{\text{MANO}}_k(r, z) - \hat{u}^{\text{Sharpa}}_k(q) \|_2^2 + \lambda \|z\|_2^2,
     \end{equation}
-    where $\{\hat{u}_k\}_{k=1}^{16}$ are unit bone-direction vectors and $\lambda = 0.08^2$. Solutions are warm-started temporally and aligned via Umeyama similarity transform \citep{umeyama1991least} on 11 anchor keypoints, with left hands mirrored along the $X$-axis.
-    \item \textbf{Distal-Phalanx Projection:} Within a local orthonormal frame at each fingertip, the manufacturer sensor point cloud is scaled to the distal phalanx and queried against MANO vertices via KD-tree, mapping grayscale luminance $v \in [0,255]$ under a fixed saturation scale $c = \mathrm{clip}(v/180, 0, 1)$.
+    where $\{\hat{u}_k\}_{k=1}^{16}$ are unit bone-direction vectors and $\lambda = 0.08^2$. Matching unit directions avoids artifacts from robot-vs.-human bone-length differences (remaining invariant to translation and scale, though sensitive to global rotation $r$). Solutions are warm-started temporally and decoupled from global spatial alignment via a closed-form Umeyama similarity transform \citep{umeyama1991least} on 11 anchor keypoints (wrist, 5 finger roots, and 5 fingertips), transforming all 778 MANO vertices with left hands mirrored along the $X$-axis.
+    \item \textbf{Distal-Phalanx Projection:} Independent of kinematic fitting, tactile transfer acts as geometry-driven texture projection: within a finger-local orthonormal frame at each distal phalanx (reducing sensitivity to global hand motion), the manufacturer sensor point cloud is queried against MANO vertices via nearest neighbor ($j^* = \arg\min_j \|v^{\text{MANO}}_i - p^{\text{sensor}}_j\|_2$), mapping grayscale luminance $v \in [0,255]$ under a fixed saturation scale $c = \mathrm{clip}(v/180, 0, 1)$.
     \item \textbf{UV Atlas Rasterization:} Per-face intensities are rasterized onto the $128\times 128$ MANO UV atlas via a pose-invariant face-ID map with 1-pixel seam dilation, alongside exported pose metadata and solver diagnostics.
 \end{enumerate}
 
 \paragraph{Route B: Parallel Grippers.}
-Two-finger parallel grippers lack human-like finger articulation; we therefore formulate retargeting as a \emph{static surface correspondence} from gripper pads to the MANO thumb and index finger footprints:
+Unlike Route~A, two-finger parallel grippers lack human-like finger articulation; rather than fitting per-frame hand poses, we treat the canonical MANO surface as a \emph{fixed tactile container} via static surface correspondence, assigning the left gripper pad to the MANO thumb pad and the right pad to the MANO index finger pad (leaving the middle, ring, little fingers, and palm unobserved):
 \begin{enumerate}[leftmargin=*,nosep]
     \item \textbf{Reference Frame Selection:} For visuo-tactile cameras (e.g., TacVerse), we automatically identify temporally stable, maximum-aperture windows to serve as no-contact reference candidates.
-    \item \textbf{Depth Reconstruction and Static Mapping:} Per-sensor calibrated depth maps are mapped onto the MANO thumb and index surfaces via a frozen 778-vertex barycentric correspondence table ($<1$~mm reconstruction error).
-    \item \textbf{Fixed-Range UV Encoding:} Valid surface samples are averaged onto the $128\times 128$ UV grid with uncovered texels marked unknown, encoding depth $d$ via a fixed range $c = \mathrm{clip}((d - 0.001)/(0.4 - 0.001), 0, 1)$ alongside an explicit binary validity mask.
-    \item \textbf{General Pad Extension (\texttt{StandardPad}):} To accommodate arbitrary rectangular taxel, depth, or pressure gripper arrays, we provide a general trend-projection mode that maps pads onto the thumb/index UV footprint using training-frozen per-texel baselines and 99th-percentile scaling (with zero-centered encoding for signed shear).
+    \item \textbf{Depth Reconstruction and Static Barycentric Mapping:} Offline geometric calibration records each sensor pixel's MANO triangle face ID and barycentric weights $(b_0, b_1, b_2)$ ($\sum_i b_i = 1$). Because each 3D face shares the exact same barycentric weights with its 2D UV triangle ($P_{\text{UV}} = b_0\text{UV}_0 + b_1\text{UV}_1 + b_2\text{UV}_2$), runtime mapping requires no per-frame 3D recomputation—calibrated depth maps are transferred via a frozen lookup table (\texttt{fixed\_mapping.h5}, $<1$~mm error).
+    \item \textbf{Fixed-Range UV Encoding:} Colliding sensor pixels mapping to the same $128\times 128$ UV texel are averaged, encoding depth $d$ via a fixed range $c = \mathrm{clip}((d - 0.001)/(0.4 - 0.001), 0, 1)$ alongside an explicit binary observation validity mask (\texttt{valid.png}) that separates observed thumb/index pads from uninstrumented hand regions and background.
+    \item \textbf{General Pad Extension (\texttt{StandardPad}):} For gripper corpora lacking per-pixel geometric calibration, we stretch rectangular taxel, depth, or pressure matrices onto the MANO thumb/index UV footprints using training-frozen per-texel baselines and 99th-percentile scaling (zero-centered for signed shear), preserving temporal and spatial trend structure (contact onset, intensity evolution, contact migration, and inter-pad correlation) without assuming metric surface correspondence.
 \end{enumerate}
 
 \subsection{Dataset Statistics}
