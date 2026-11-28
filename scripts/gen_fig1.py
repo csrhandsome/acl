@@ -377,7 +377,13 @@ def draw():
     cv.text(18.0, T(57.9), "Visuo-tactile pads (Thumb / Index)", size=SZ_SUB, color=C_SLATE)
 
     # -----------------------------------------------------------------------
-    # Column 2 (HERO): Canonical MANO UV Atlas & Data Contract (x = 38.5..75.0)
+    # Column 2 (HERO): Canonical MANO UV Atlas (x = 38.5..75.0)
+    # User guidance:
+    # - Stack MANO UV Mask -> UV Contact Map vertically with an explicit arrow
+    #   to avoid crowding and clearly show the mask-to-UV mapping.
+    # - Remove the Data Contract card from Fig 1 (covered in Fig 2 / text).
+    # - Visually split the UV image into Left (pink schematic hand topology)
+    #   and Right (dark actual contact map fed to encoders) with aligned labels.
     # -----------------------------------------------------------------------
     cv.text(56.75, T(4.2), "2. Unified Representation", size=SZ_HEAD, weight="bold", color=C_HERO)
 
@@ -386,37 +392,40 @@ def draw():
         fill=C_HERO_FILL, stroke=C_HERO, lw=LW_HERO, radius=2.2, z=3,
     )
     cv.text(56.75, T(11.0), "Canonical MANO UV Atlas", size=SZ_BODY, weight="bold", color=C_HERO)
-    cv.text(56.75, T(14.3), "Bimanual 128 × 256 · 30 FPS", size=SZ_SUB, color=C_INK)
+    cv.text(56.75, T(14.2), "Bimanual 128 × 256 · 30 FPS", size=SZ_SUB, color=C_INK)
 
-    # Embedded UV heatmap image
-    cv.image(uv_path, cx=56.75, cy=T(25.8), w=31.5, z=8, knockout_white=False, crop=False)
+    # Step 1: MANO UV Validity Mask (top)
+    cv.image(mask_path, cx=56.75, cy=T(22.2), w=21.0, z=8, knockout_white=False, crop=False)
     cv.ax.add_patch(
-        Rectangle((56.75 - 15.75, T(25.8) - 7.875), 31.5, 15.75, fc="none", ec=C_HERO, lw=0.5, zorder=9)
+        Rectangle((56.75 - 10.5, T(22.2) - 5.25), 21.0, 10.5, fc="none", ec=C_SLATE, lw=0.45, zorder=9)
     )
-    cv.text(56.75, T(36.1), "Left + Right Hand UV Contact Map", size=SZ_SUB, color=C_MUTED)
 
-    # Embedded MANO UV Mask + Fixed-Scale Contract
-    cv.image(mask_path, cx=46.8, cy=T(43.6), w=13.5, z=8, knockout_white=False, crop=False)
+    # Explicit Mask -> UV mapping connector
+    cv.arrow([(56.75, T(27.8)), (56.75, T(32.8))], color=C_HERO, lw=LW_HERO, head=1.3)
+    cv.text(55.0, T(30.3), "MANO UV Mask", size=SZ_SUB, weight="bold", color=C_INK, ha="right")
+    cv.text(58.5, T(30.3), "Maps valid surface", size=SZ_SUB, color=C_HERO, style="italic", ha="left")
+
+    # Step 2: Canonical UV Contact Map (split Left = Schematic vs. Right = Actual Input)
+    uv_w, uv_h = 31.0, 15.5
+    uv_cy = T(44.5)
+    uv_x0 = 56.75 - uv_w / 2.0
+    uv_y0 = uv_cy - uv_h / 2.0
+
+    cv.text(56.75 - uv_w / 4.0, T(35.0), "Hand Layout", size=SZ_SUB, color=C_MUTED)
+    cv.text(56.75 + uv_w / 4.0, T(35.0), "Actual UV Input", size=SZ_SUB, weight="bold", color=C_HERO)
+
+    cv.image(uv_path, cx=56.75, cy=uv_cy, w=uv_w, z=8, knockout_white=False, crop=False)
+    # Left half: muted border (schematic hand topology)
     cv.ax.add_patch(
-        Rectangle((46.8 - 6.75, T(43.6) - 3.375), 13.5, 6.75, fc="none", ec=C_SLATE, lw=0.45, zorder=9)
+        Rectangle((uv_x0, uv_y0), uv_w / 2.0, uv_h, fc="none", ec=C_SLATE, lw=0.45, zorder=9)
     )
-    cv.text(46.8, T(49.2), "MANO UV Mask", size=SZ_SUB, weight="bold", color=C_INK)
+    # Right half: hero blue border (actual dark contact map fed to encoders)
+    cv.ax.add_patch(
+        Rectangle((56.75, uv_y0), uv_w / 2.0, uv_h, fc="none", ec=C_HERO, lw=0.75, zorder=10)
+    )
+    cv.ax.plot([56.75, 56.75], [uv_y0, uv_y0 + uv_h], color="white", lw=0.5, ls="--", alpha=0.7, zorder=11)
 
-    # Contract badge box next to MANO UV mask
-    cv.box(
-        55.0, T(48.8), 18.0, 10.4,
-        fill="white", stroke=C_HERO, lw=0.5, radius=1.2, z=6,
-    )
-    cv.text(64.0, T(40.6), "Data Contract", size=SZ_SUB, weight="bold", color=C_HERO)
-    cv.text(64.0, T(43.6), "• Proxy vs. Force", size=SZ_SUB, color=C_INK)
-    cv.text(64.0, T(46.5), "• Fixed Global Scale", size=SZ_SUB, color=C_INK)
-
-    # Bottom summary strip inside Hero
-    cv.box(
-        40.5, T(58.0), 32.5, 5.6,
-        fill=C_HERO_SOFT, stroke="none", radius=1.0, z=5,
-    )
-    cv.text(56.75, T(55.2), "Separates Observed-0 vs. Unknown", size=SZ_SUB, weight="bold", color=C_HERO)
+    cv.text(56.75, T(55.0), "Left: schematic · Right: actual contact map", size=SZ_SUB, color=C_MUTED)
 
     # Arrows: Route A & B -> Hero
     cv.arrow([(34.0, T(20.2)), (38.5, T(20.2))], color=C_SLATE, lw=LW_BASE, head=1.3)

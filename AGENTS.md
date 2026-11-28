@@ -22,3 +22,4 @@
    - Reproducible figure generation scripts live in `scripts/` (e.g., `scripts/gen_fig1.py`).
    - Scripts should read/write figure-specific intermediate assets from `assets/fig<N>/` and write final outputs to `img/`.
    - When embedding transparent RGBA renders (e.g., URDF/Blender renders) inside tinted or grey-ground panels, preserve the RGBA alpha channel directly rather than compositing over pure white.
+   - **Record User Guidance in Comments**: Whenever modifying a figure-generation Python script, briefly document the user's visual/design instructions as concise inline comments in the script so subsequent edits preserve those decisions.
